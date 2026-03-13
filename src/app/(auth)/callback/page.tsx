@@ -1,21 +1,32 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function CallbackPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const supabase = createClient();
+    const code = searchParams.get("code");
+    if (!code) {
+      router.push("/login");
+      return;
+    }
 
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
-        router.push("/pipeline");
-      }
-    });
-  }, [router]);
+    const supabase = createClient();
+    supabase.auth
+      .exchangeCodeForSession(code)
+      .then(({ error }) => {
+        if (error) {
+          console.error("Auth callback error:", error);
+          router.push("/login");
+        } else {
+          router.push("/pipeline");
+        }
+      });
+  }, [router, searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1B2A4A]">
