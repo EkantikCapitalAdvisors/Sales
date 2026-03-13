@@ -1,4 +1,17 @@
 // Seed data for the CRM database
+// Run with: npx tsx src/lib/db/seed.ts
+
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import {
+  objectionRegistry,
+  checklistSections,
+  checklistItems,
+  messageTemplates,
+  settings,
+} from "./schema";
+
+// --- Seed Data Constants ---
 
 export const SEED_OBJECTIONS = [
   {
@@ -199,3 +212,64 @@ export const SEED_SETTINGS = [
   { key: "whatsapp_config", value: { enabled: false } },
   { key: "telegram_config", value: { enabled: false } },
 ];
+
+// --- Seed Runner ---
+
+async function seed() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.error("DATABASE_URL is required. Set it in .env.local");
+    process.exit(1);
+  }
+
+  const client = postgres(connectionString);
+  const db = drizzle(client);
+
+  console.log("🌱 Seeding database...\n");
+
+  // 1. Objection Registry
+  console.log("  Inserting objection registry...");
+  await db.insert(objectionRegistry).values(SEED_OBJECTIONS);
+  console.log(`  ✓ ${SEED_OBJECTIONS.length} objections inserted`);
+
+  // 2. Checklist Sections + Items
+  console.log("  Inserting checklist sections and items...");
+  let totalItems = 0;
+  for (const section of SEED_CHECKLIST_SECTIONS) {
+    const [inserted] = await db
+      .insert(checklistSections)
+      .values({ name: section.name, sortOrder: section.sortOrder })
+      .returning({ id: checklistSections.id });
+
+    const itemValues = section.items.map((title, idx) => ({
+      sectionId: inserted.id,
+      title,
+      sortOrder: idx,
+    }));
+    await db.insert(checklistItems).values(itemValues);
+    totalItems += section.items.length;
+  }
+  console.log(
+    `  ✓ ${SEED_CHECKLIST_SECTIONS.length} sections, ${totalItems} items inserted`
+  );
+
+  // 3. Message Templates
+  console.log("  Inserting message templates...");
+  await db.insert(messageTemplates).values(SEED_MESSAGE_TEMPLATES);
+  console.log(`  ✓ ${SEED_MESSAGE_TEMPLATES.length} templates inserted`);
+
+  // 4. Settings
+  console.log("  Inserting default settings...");
+  await db.insert(settings).values(SEED_SETTINGS);
+  console.log(`  ✓ ${SEED_SETTINGS.length} settings inserted`);
+
+  console.log("\n✅ Seed complete!");
+
+  await client.end();
+  process.exit(0);
+}
+
+seed().catch((err) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});
