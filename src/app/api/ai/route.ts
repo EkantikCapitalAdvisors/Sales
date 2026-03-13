@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createClient } from "@/lib/supabase/server";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Simple in-memory rate limiter: max 20 AI requests per minute per user
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60_000;
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
 
 const SYSTEM_PROMPT = `You are an elite sales strategist and AI assistant for Ekantik Capital Advisors, a wealth management firm onboarding its first 25 Founding Members.
 
@@ -24,6 +42,22 @@ Always be specific, actionable, and grounded in the prospect's actual data. Avoi
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. Verify user is authenticated
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 2. Rate limit per user
+    if (!checkRateLimit(user.id)) {
+      return NextResponse.json(
+        { error: "Too many AI requests. Please wait a minute." },
+        { status: 429 }
+      );
+    }
+
+    // 3. Check API key is configured
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey || apiKey === "placeholder") {
       return NextResponse.json(
