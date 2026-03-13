@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatCurrency, daysSince } from "@/lib/utils";
 import { PIPELINE_STAGES } from "@/lib/constants";
+import { AIInsightsPanel } from "@/components/ai/ai-insights-panel";
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -233,6 +234,9 @@ export default function ProspectDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Assistant */}
+      <AIInsightsPanel prospect={prospect as unknown as Record<string, unknown>} />
 
       {/* Activity Timeline */}
       <div>

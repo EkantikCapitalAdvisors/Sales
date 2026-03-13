@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useProspects } from "@/hooks/use-prospects";
 import { interpolateTemplate, formatCurrency } from "@/lib/utils";
 import { PIPELINE_STAGES, type MessageChannel } from "@/lib/constants";
+import { AIMessageDrafter } from "@/components/ai/ai-message-drafter";
 import { Send, Mail, MessageCircle, Check } from "lucide-react";
 
 const channelTabs: { id: MessageChannel; label: string; icon: React.ElementType }[] = [
@@ -161,6 +162,18 @@ export default function MessagingPage() {
                 {"{{capital_level}}"}, {"{{stage}}"}
               </p>
             </div>
+
+            {/* AI Message Drafter */}
+            {previewProspect && (
+              <AIMessageDrafter
+                prospect={previewProspect as unknown as Record<string, unknown>}
+                channel={channel}
+                onUseDraft={(content, subjectLine) => {
+                  setBody(content);
+                  if (subjectLine) setSubject(subjectLine);
+                }}
+              />
+            )}
 
             {/* Preview */}
             {previewProspect && body && (
