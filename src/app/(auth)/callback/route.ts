@@ -6,6 +6,11 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  console.log("Supabase URL:", supabaseUrl);
+  console.log("Anon key length:", anonKey.length, "starts with:", anonKey.substring(0, 20));
+
   if (code) {
     const cookieStore = await cookies();
     const supabase = createServerClient(
