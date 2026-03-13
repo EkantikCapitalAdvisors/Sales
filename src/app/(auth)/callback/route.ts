@@ -29,10 +29,14 @@ export async function GET(request: Request) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      console.log("Auth success, user:", data.user?.email);
       return NextResponse.redirect(`${origin}/pipeline`);
     }
+    console.error("Auth callback error:", error.message);
+  } else {
+    console.error("No code in callback URL");
   }
 
   // If no code or error, redirect to login
